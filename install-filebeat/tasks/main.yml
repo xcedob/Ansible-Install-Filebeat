@@ -1,0 +1,44 @@
+---
+# tasks file for filebeat
+- name: Add GPG Key For Elastic
+  rpm_key:
+    key: https://packages.elastic.co/GPG-KEY-elasticsearch
+    state: present
+- name: Add Filebeat repo
+  template:
+    src: filebeat-repo.j2
+    dest: /etc/yum.repos.d/beats.repo
+    mode: 0644
+- name: Install Filebeat
+  yum: 
+    name: filebeat
+    state: present
+- name: Add OOM Killer Config
+  template:
+    src: oom-killer.conf
+    dest: /etc/rsyslog.d
+    mode: 0644
+- name: Add OOM Killer Monitoring
+  blockinfile:
+      dest: /etc/filebeat/filebeat.yml
+      insertafter: 'filebeat.inputs:'
+      marker: "# {mark} -- OOM Killer logging configured by Ansible"
+      block: |
+        - type: log
+          paths: "/var/log/oom-killer.log"
+- name: Add Logstash output
+  blockinfile:
+    path: /etc/filebeat/filebeat.yml
+    block: |
+      output.logstash:
+        hosts: ["elk-cluster:5044"]
+        loadbalance: true 
+- name: Enable Filebeat
+  systemd: 
+    name: filebeat.service 
+    enabled: yes
+- name: Start Filebeat
+  systemd: 
+    name: filebeat.service
+    state: restarted
+  become: true

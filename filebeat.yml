@@ -1,0 +1,6 @@
+- name: install filebeat
+  hosts: all
+  roles:
+    - install-filebeat
+  become: yes
+  gather_facts: yes
